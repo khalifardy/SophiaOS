@@ -1,0 +1,167 @@
+# =============================================================================
+# Sophia OS — Validate
+# Workflow untuk validasi package lists dan konfigurasi
+# Trigger: setiap push dan pull request
+# =============================================================================
+
+name: Validate
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate-package-lists:
+    name: Validate Package Lists
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check package list files exist
+        run: |
+          echo "=== Memeriksa keberadaan package list files ==="
+          required_files=(
+            "config/package-lists/base.list.chroot"
+            "config/package-lists/desktop.list.chroot"
+            "config/package-lists/science.list.chroot"
+            "config/package-lists/astronomy.list.chroot"
+            "config/package-lists/ml-ai.list.chroot"
+            "config/package-lists/dev.list.chroot"
+            "config/package-lists/locale.list.chroot"
+          )
+
+          all_found=true
+          for f in "${required_files[@]}"; do
+            if [ -f "$f" ]; then
+              echo "  ✓ $f"
+            else
+              echo "  ✗ $f TIDAK DITEMUKAN"
+              all_found=false
+            fi
+          done
+
+          if [ "$all_found" = false ]; then
+            echo "::error::Ada package list yang hilang!"
+            exit 1
+          fi
+
+          echo ""
+          echo "=== Semua package list ditemukan ==="
+
+      - name: Validate package list format
+        run: |
+          echo "=== Memeriksa format package list ==="
+          errors=0
+
+          for f in config/package-lists/*.list.chroot; do
+            echo "Checking: $f"
+
+            # Cek apakah ada baris kosong yang bukan komentar dan bukan package name
+            while IFS= read -r line; do
+              # Skip baris kosong dan komentar
+              [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+
+              # Package name harus lowercase alphanumeric, dash, dot, plus
+              if ! echo "$line" | grep -qE '^[a-z0-9][a-z0-9.+\-]+$'; then
+                echo "  ⚠ Format tidak valid: '$line'"
+                errors=$((errors + 1))
+              fi
+            done < "$f"
+          done
+
+          if [ $errors -gt 0 ]; then
+            echo ""
+            echo "::warning::Ditemukan $errors baris dengan format yang perlu dicek"
+          else
+            echo ""
+            echo "=== Semua format valid ==="
+          fi
+
+      - name: Count packages per category
+        run: |
+          echo "=== Ringkasan Paket ==="
+          echo ""
+          total=0
+
+          for f in config/package-lists/*.list.chroot; do
+            name=$(basename "$f" .list.chroot)
+            count=$(grep -cE '^[a-z]' "$f" || true)
+            total=$((total + count))
+            printf "  %-15s : %3d paket\n" "$name" "$count"
+          done
+
+          echo "  ─────────────────────────"
+          printf "  %-15s : %3d paket\n" "TOTAL" "$total"
+
+  validate-scripts:
+    name: Validate Shell Scripts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install ShellCheck
+        run: sudo apt-get install -y shellcheck
+
+      - name: Run ShellCheck on scripts
+        run: |
+          echo "=== Memeriksa shell scripts ==="
+          find scripts/ -name "*.sh" -type f | while read -r script; do
+            echo "Checking: $script"
+            shellcheck "$script" || true
+          done
+
+      - name: Check scripts are executable
+        run: |
+          echo "=== Memeriksa permission scripts ==="
+          find scripts/ -name "*.sh" -type f | while read -r script; do
+            if [ -x "$script" ]; then
+              echo "  ✓ $script (executable)"
+            else
+              echo "  ⚠ $script (not executable)"
+              echo "::warning::$script tidak memiliki permission executable"
+            fi
+          done
+
+  validate-docs:
+    name: Validate Documentation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check required docs exist
+        run: |
+          echo "=== Memeriksa dokumentasi ==="
+          required_docs=(
+            "README.md"
+            "SOPHIA-OS-MASTERPLAN.md"
+          )
+
+          for doc in "${required_docs[@]}"; do
+            if [ -f "$doc" ]; then
+              echo "  ✓ $doc"
+            else
+              echo "  ✗ $doc TIDAK DITEMUKAN"
+              echo "::warning::Dokumentasi $doc tidak ditemukan"
+            fi
+          done
+
+      - name: Check for broken internal links in markdown
+        run: |
+          echo "=== Memeriksa internal links ==="
+          find . -name "*.md" -not -path "./.git/*" | while read -r md; do
+            # Cek referensi ke file lokal
+            grep -oP '\[.*?\]\((?!http)(.*?)\)' "$md" | grep -oP '\(.*?\)' | tr -d '()' | while read -r link; do
+              dir=$(dirname "$md")
+              if [ ! -f "$dir/$link" ] && [ ! -d "$dir/$link" ]; then
+                echo "  ⚠ $md → broken link: $link"
+              fi
+            done
+          done || true

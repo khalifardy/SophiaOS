@@ -1,0 +1,113 @@
+# =============================================================================
+# Sophia OS — Build ISO
+# Workflow untuk build ISO menggunakan Debian live-build
+# Trigger: push ke main, pull request ke main, atau manual dispatch
+# =============================================================================
+
+name: Build ISO
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'config/**'
+      - 'scripts/**'
+      - 'themes/**'
+      - 'sophia-tools/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'config/**'
+      - 'scripts/**'
+      - 'themes/**'
+      - 'sophia-tools/**'
+  workflow_dispatch:
+    inputs:
+      edition:
+        description: 'Edisi yang akan di-build'
+        required: true
+        default: 'full'
+        type: choice
+        options:
+          - full
+          - lite
+          - astro
+
+jobs:
+  build:
+    name: Build Sophia OS ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            live-build \
+            debootstrap \
+            xorriso \
+            squashfs-tools \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools
+
+      - name: Configure live-build
+        run: |
+          mkdir -p build && cd build
+
+          sudo lb config \
+            --distribution bookworm \
+            --architectures amd64 \
+            --binary-images iso-hybrid \
+            --bootloaders "grub-efi" \
+            --debian-installer live \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --apt-recommends true \
+            --security true \
+            --updates true \
+            --cache true \
+            --iso-application "Sophia OS" \
+            --iso-publisher "IDEASOPHIA" \
+            --iso-volume "SophiaOS-1.0-Merapi"
+
+      - name: Copy package lists
+        run: |
+          cp config/package-lists/*.list.chroot build/config/package-lists/
+
+      - name: Copy hooks
+        run: |
+          if [ -d config/hooks ]; then
+            cp -r config/hooks/* build/config/hooks/ 2>/dev/null || true
+          fi
+
+      - name: Copy includes (themes, configs)
+        run: |
+          if [ -d config/includes.chroot ]; then
+            cp -r config/includes.chroot/* build/config/includes.chroot/ 2>/dev/null || true
+          fi
+
+      - name: Build ISO
+        run: |
+          cd build
+          sudo lb build 2>&1 | tee build.log
+
+      - name: Upload ISO artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sophia-os-iso-${{ github.sha }}
+          path: build/*.iso
+          retention-days: 7
+          compression-level: 0
+
+      - name: Upload build log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log-${{ github.sha }}
+          path: build/build.log
+          retention-days: 14

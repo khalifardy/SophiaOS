@@ -1,0 +1,120 @@
+# =============================================================================
+# Sophia OS — Release
+# Workflow untuk membuat GitHub Release secara otomatis
+# Trigger: push tag dengan format v*.*.* (contoh: v1.0.0-merapi)
+# =============================================================================
+
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  build-and-release:
+    name: Build & Release Sophia OS
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Extract version info
+        id: version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#v}
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building Sophia OS $TAG"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            live-build \
+            debootstrap \
+            xorriso \
+            squashfs-tools \
+            grub-efi-amd64-bin \
+            mtools \
+            dosfstools
+
+      - name: Configure live-build
+        run: |
+          mkdir -p build && cd build
+
+          sudo lb config \
+            --distribution bookworm \
+            --architectures amd64 \
+            --binary-images iso-hybrid \
+            --bootloaders "grub-efi" \
+            --debian-installer live \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --apt-recommends true \
+            --security true \
+            --updates true \
+            --cache true \
+            --iso-application "Sophia OS" \
+            --iso-publisher "IDEASOPHIA" \
+            --iso-volume "SophiaOS-${{ steps.version.outputs.version }}"
+
+      - name: Copy configurations
+        run: |
+          cp config/package-lists/*.list.chroot build/config/package-lists/
+          [ -d config/hooks ] && cp -r config/hooks/* build/config/hooks/ 2>/dev/null || true
+          [ -d config/includes.chroot ] && cp -r config/includes.chroot/* build/config/includes.chroot/ 2>/dev/null || true
+
+      - name: Build ISO
+        run: |
+          cd build
+          sudo lb build 2>&1 | tee build.log
+
+      - name: Rename ISO
+        run: |
+          cd build
+          for iso in *.iso; do
+            mv "$iso" "SophiaOS-${{ steps.version.outputs.version }}-amd64.iso"
+          done
+
+      - name: Generate checksums
+        run: |
+          cd build
+          sha256sum SophiaOS-*.iso > SHA256SUMS
+          md5sum SophiaOS-*.iso > MD5SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Sophia OS ${{ steps.version.outputs.tag }}"
+          body: |
+            ## Sophia OS ${{ steps.version.outputs.tag }}
+
+            **IDEASOPHIA — Ideas Grow Like Leaves Under Sunlight**
+
+            ### Download
+            Download ISO file di bawah dan verifikasi checksum sebelum install.
+
+            ### Verifikasi
+            ```bash
+            sha256sum -c SHA256SUMS
+            ```
+
+            ### Dokumentasi
+            Lihat [SOPHIA-OS-MASTERPLAN.md](https://github.com/${{ github.repository }}/blob/main/SOPHIA-OS-MASTERPLAN.md) untuk dokumentasi lengkap.
+
+            ---
+            *Built automatically by GitHub Actions*
+          files: |
+            build/SophiaOS-*.iso
+            build/SHA256SUMS
+            build/MD5SUMS
+          draft: true
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
