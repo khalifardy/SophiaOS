@@ -1,0 +1,10 @@
+# Sophia OS — Machine Learning & AI Packages
+# Paket machine learning dan kecerdasan buatan
+
+python3-torch
+python3-torchvision
+python3-tensorflow
+python3-keras
+python3-opencv
+python3-seaborn
+python3-plotly

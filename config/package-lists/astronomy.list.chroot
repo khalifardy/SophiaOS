@@ -1,0 +1,12 @@
+# Sophia OS — Astronomy Packages
+# Paket astronomi dan astrofisika
+
+stellarium
+kstars
+python3-astropy
+python3-photutils
+python3-specutils
+python3-ccdproc
+python3-astroquery
+iraf
+python3-pyraf

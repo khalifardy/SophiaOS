@@ -1,0 +1,23 @@
+# Sophia OS — Base System Packages
+# Paket dasar sistem operasi
+
+linux-image-amd64
+firmware-linux
+firmware-linux-nonfree
+sudo
+bash-completion
+locales
+console-setup
+network-manager
+wpasupplicant
+bluetooth
+pipewire
+pipewire-pulse
+wireplumber
+ufw
+unattended-upgrades
+apt-transport-https
+ca-certificates
+gnupg
+lsb-release
+software-properties-common

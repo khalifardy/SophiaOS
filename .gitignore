@@ -1,0 +1,33 @@
+# Sophia OS .gitignore
+
+# === Build artifacts ===
+build/
+*.iso
+*.img
+*.squashfs
+.build/
+chroot/
+binary/
+cache/
+
+# === OS & editor ===
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# === Logs ===
+*.log
+
+# === Temporary files ===
+*.tmp
+*.bak
+*.orig
+
+# === Large binary assets (gunakan Git LFS jika perlu) ===
+# *.ai
+# *.psd
+# *.zip

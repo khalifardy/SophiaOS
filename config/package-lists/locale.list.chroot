@@ -1,0 +1,13 @@
+# Sophia OS — Localization Packages
+# Paket lokalisasi Bahasa Indonesia
+
+locales
+language-pack-id
+language-pack-kde-id
+hunspell-id
+libreoffice-l10n-id
+firefox-esr-l10n-id
+fonts-noto
+fonts-noto-cjk
+fonts-noto-mono
+fonts-noto-color-emoji

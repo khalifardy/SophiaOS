@@ -1,0 +1,21 @@
+# Sophia OS — Development Tools
+# Tools pengembangan software
+
+git
+git-lfs
+docker.io
+docker-compose
+build-essential
+cmake
+nodejs
+npm
+neovim
+tmux
+htop
+ripgrep
+curl
+wget
+jq
+openssh-client
+openssh-server
+rsync

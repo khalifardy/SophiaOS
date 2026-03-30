@@ -1,0 +1,28 @@
+# Sophia OS — KDE Plasma Desktop
+# Desktop environment dan aplikasi GUI dasar
+
+kde-plasma-desktop
+sddm
+plasma-workspace
+dolphin
+konsole
+kate
+ark
+spectacle
+gwenview
+okular
+kcalc
+kde-config-sddm
+plasma-nm
+plasma-pa
+powerdevil
+bluedevil
+breeze
+breeze-gtk-theme
+kscreen
+kde-spectacle
+firefox-esr
+thunderbird
+libreoffice
+filelight
+partitionmanager
